@@ -1,97 +1,118 @@
 --[[
-    Jujutsu Shenanigans Auto Block Script (Advanced Bypass)
+    JJS.SENSE Premium Interface
     Совместимость: Xeno / Любой современный инжектор
-    Описание: Версия с обновленным дизайном ватермарка и обходом защиты.
+    Описание: Обновленный визуальный стиль "Modern Dark"
 ]]
 
 local Player = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
--- Создание улучшенного Watermark
+-- Поиск события блока
+local blockRemote = ReplicatedStorage:FindFirstChild("Block", true) or ReplicatedStorage:FindFirstChild("CombatRes", true)
+
+-- Создание премиального Watermark
 local function createWatermark()
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "JJS_Premium_Watermark"
+    screenGui.Name = "JJS_SENSE_V4"
     screenGui.ResetOnSpawn = false
     screenGui.Parent = (gethui and gethui()) or CoreGui or Player:WaitForChild("PlayerGui")
     
-    -- Основной контейнер
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 240, 0, 40)
-    mainFrame.Position = UDim2.new(0, 20, 0, 20)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Parent = screenGui
+    -- Контейнер с тенью
+    local holder = Instance.new("Frame")
+    holder.Name = "Holder"
+    holder.Size = UDim2.new(0, 260, 0, 35)
+    holder.Position = UDim2.new(0, 20, 0, 20)
+    holder.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    holder.BorderSizePixel = 0
+    holder.Parent = screenGui
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = mainFrame
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = holder
     
-    -- Градиентная полоска сверху
-    local accentBar = Instance.new("Frame")
-    accentBar.Size = UDim2.new(1, 0, 0, 2)
-    accentBar.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-    accentBar.BorderSizePixel = 0
-    accentBar.Parent = mainFrame
+    -- Анимированная градиентная полоска
+    local gradientBar = Instance.new("Frame")
+    gradientBar.Size = UDim2.new(1, 0, 0, 2)
+    gradientBar.Position = UDim2.new(0, 0, 0, 0)
+    gradientBar.BorderSizePixel = 0
+    gradientBar.Parent = holder
     
     local barCorner = Instance.new("UICorner")
-    barCorner.CornerRadius = UDim.new(0, 6)
-    barCorner.Parent = accentBar
+    barCorner.CornerRadius = UDim.new(0, 4)
+    barCorner.Parent = gradientBar
+    
+    local uigradient = Instance.new("UIGradient")
+    uigradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)), -- Фиолетовый
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)), -- Циан
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(138, 43, 226))
+    })
+    uigradient.Parent = gradientBar
+    
+    -- Анимация градиента
+    task.spawn(function()
+        while true do
+            local t = tick() * 0.5
+            uigradient.Offset = Vector2.new(math.sin(t), 0)
+            task.wait()
+        end
+    end)
 
-    -- Тень/Свечение
+    -- Обводка
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(138, 43, 226)
-    stroke.Thickness = 1.5
-    stroke.Transparency = 0.5
-    stroke.Parent = mainFrame
+    stroke.Color = Color3.fromRGB(40, 40, 40)
+    stroke.Thickness = 1
+    stroke.Parent = holder
 
-    -- Текст заголовка
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(0, 100, 1, 0)
-    titleLabel.Position = UDim2.new(0, 12, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "JJS.SENSE"
-    titleLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
-    titleLabel.TextSize = 15
-    titleLabel.Font = Enum.Font.Ubuntu
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = mainFrame
+    -- Текст (Бренд)
+    local brand = Instance.new("TextLabel")
+    brand.Size = UDim2.new(0, 80, 1, 0)
+    brand.Position = UDim2.new(0, 10, 0, 1)
+    brand.BackgroundTransparency = 1
+    brand.Text = "jjs.sense"
+    brand.TextColor3 = Color3.fromRGB(255, 255, 255)
+    brand.TextSize = 14
+    brand.Font = Enum.Font.Ubuntu
+    brand.TextXAlignment = Enum.TextXAlignment.Left
+    brand.Parent = holder
     
     -- Разделитель
-    local separator = Instance.new("Frame")
-    separator.Size = UDim2.new(0, 1, 0, 18)
-    separator.Position = UDim2.new(0, 95, 0.5, -9)
-    separator.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    separator.BorderSizePixel = 0
-    separator.Parent = mainFrame
+    local sep = Instance.new("TextLabel")
+    sep.Size = UDim2.new(0, 10, 1, 0)
+    sep.Position = UDim2.new(0, 75, 0, 1)
+    sep.BackgroundTransparency = 1
+    sep.Text = "|"
+    sep.TextColor3 = Color3.fromRGB(60, 60, 60)
+    sep.TextSize = 14
+    sep.Parent = holder
 
     -- Текст статуса
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, -110, 1, 0)
-    statusLabel.Position = UDim2.new(0, 105, 0, 0)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "waiting..."
-    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    statusLabel.TextSize = 13
-    statusLabel.Font = Enum.Font.Code
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    statusLabel.Parent = mainFrame
+    local status = Instance.new("TextLabel")
+    status.Size = UDim2.new(1, -95, 1, 0)
+    status.Position = UDim2.new(0, 90, 0, 1)
+    status.BackgroundTransparency = 1
+    status.Text = "searching threats..."
+    status.TextColor3 = Color3.fromRGB(180, 180, 180)
+    status.TextSize = 13
+    status.Font = Enum.Font.Code
+    status.TextXAlignment = Enum.TextXAlignment.Left
+    status.Parent = holder
     
-    return statusLabel, stroke
+    return status, stroke, uigradient
 end
 
-local statusLabel, mainStroke = createWatermark()
+local statusLabel, mainStroke, barGradient = createWatermark()
 
 -- Настройки
 local SETTINGS = {
-    BlockDistance = 22,
+    BlockDistance = 25,
     Enabled = true,
     BlockKey = Enum.KeyCode.F
 }
 
--- Переменные состояния
 local isBlocking = false
 
 -- Функция активации блока
@@ -101,13 +122,14 @@ local function setBlockState(active)
 
     char:SetAttribute("Blocking", active)
     
-    local CAS = game:GetService("ContextActionService")
     if active then
         if keypress then keypress(0x46) end
-        CAS:CallAction("BlockAction", Enum.UserInputState.Begin, nil)
     else
         if keyrelease then keyrelease(0x46) end
-        CAS:CallAction("BlockAction", Enum.UserInputState.End, nil)
+    end
+
+    if blockRemote and blockRemote:IsA("RemoteEvent") then
+        blockRemote:FireServer(active)
     end
 end
 
@@ -122,7 +144,8 @@ local function isAttacking(char)
             if animName:find("attack") or animName:find("punch") or animName:find("swing") or 
                animName:find("slash") or animName:find("execute") or animName:find("ability") or
                animName:find("m1") or animName:find("m2") or animName:find("hit") or 
-               animName:find("dash") or animName:find("strong") or animName:find("ultimate") then
+               animName:find("dash") or animName:find("strong") or animName:find("ultimate") or
+               animName:find("combo") or animName:find("skill") then
                 return true
             end
         end
@@ -133,7 +156,7 @@ end
 -- Основной цикл
 RunService.PostSimulation:Connect(function()
     if not SETTINGS.Enabled then 
-        statusLabel.Text = "disabled"
+        statusLabel.Text = "status: disabled"
         statusLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
         return 
     end
@@ -163,17 +186,17 @@ RunService.PostSimulation:Connect(function()
     
     if shouldBlock and not isBlocking then
         isBlocking = true
-        statusLabel.Text = "blocking"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-        mainStroke.Transparency = 0
+        statusLabel.Text = "status: blocking"
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+        TweenService:Create(mainStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(0, 255, 150)}):Play()
         setBlockState(true)
     elseif not shouldBlock and isBlocking then
         isBlocking = false
-        statusLabel.Text = "active"
-        statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        mainStroke.Transparency = 0.5
+        statusLabel.Text = "status: active"
+        statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        TweenService:Create(mainStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(40, 40, 40)}):Play()
         setBlockState(false)
     end
 end)
 
-print("--- JJS.SENSE Loaded ---")
+print("--- JJS.SENSE V4 (Animated) Loaded 
