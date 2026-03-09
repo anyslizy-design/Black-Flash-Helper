@@ -1,7 +1,7 @@
 --[[
     JJS.SENSE Premium Interface
     Совместимость: Xeno / Любой современный инжектор
-    Описание: Обновленный визуальный стиль "Modern Dark". Добавлена пасхалка при загрузке.
+    Описание: Обновленный визуальный стиль с приветственным баннером.
 ]]
 
 local Player = game:GetService("Players").LocalPlayer
@@ -13,6 +13,36 @@ local TweenService = game:GetService("TweenService")
 -- Поиск события блока
 local blockRemote = ReplicatedStorage:FindFirstChild("Block", true) or ReplicatedStorage:FindFirstChild("CombatRes", true)
 
+-- Функция создания приветственного баннера
+local function createBigBanner()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "JJS_BigBanner"
+    screenGui.Parent = (gethui and gethui()) or CoreGui or Player:WaitForChild("PlayerGui")
+    
+    local banner = Instance.new("TextLabel")
+    banner.Size = UDim2.new(1, 0, 0, 100)
+    banner.Position = UDim2.new(0, 0, -0.2, 0) -- Начинаем за пределами экрана
+    banner.BackgroundTransparency = 1
+    banner.Text = "ГОНДОН"
+    banner.TextColor3 = Color3.fromRGB(255, 0, 0)
+    banner.TextSize = 80
+    banner.Font = Enum.Font.GothamBlack
+    banner.TextStrokeTransparency = 0
+    banner.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    banner.Parent = screenGui
+    
+    -- Анимация появления
+    TweenService:Create(banner, TweenInfo.new(1, Enum.EasingStyle.Back), {Position = UDim2.new(0, 0, 0.1, 0)}):Play()
+    
+    -- Исчезновение через 3 секунды
+    task.delay(3.5, function()
+        local t = TweenService:Create(banner, TweenInfo.new(1, Enum.EasingStyle.Quad), {TextTransparency = 1, TextStrokeTransparency = 1})
+        t:Play()
+        t.Completed:Wait()
+        screenGui:Destroy()
+    end)
+end
+
 -- Создание премиального Watermark
 local function createWatermark()
     local screenGui = Instance.new("ScreenGui")
@@ -20,7 +50,6 @@ local function createWatermark()
     screenGui.ResetOnSpawn = false
     screenGui.Parent = (gethui and gethui()) or CoreGui or Player:WaitForChild("PlayerGui")
     
-    -- Контейнер с тенью
     local holder = Instance.new("Frame")
     holder.Name = "Holder"
     holder.Size = UDim2.new(0, 260, 0, 35)
@@ -33,7 +62,6 @@ local function createWatermark()
     corner.CornerRadius = UDim.new(0, 4)
     corner.Parent = holder
     
-    -- Анимированная градиентная полоска
     local gradientBar = Instance.new("Frame")
     gradientBar.Size = UDim2.new(1, 0, 0, 2)
     gradientBar.Position = UDim2.new(0, 0, 0, 0)
@@ -46,13 +74,12 @@ local function createWatermark()
     
     local uigradient = Instance.new("UIGradient")
     uigradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)), -- Фиолетовый
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)), -- Циан
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(138, 43, 226))
     })
     uigradient.Parent = gradientBar
     
-    -- Анимация градиента
     task.spawn(function()
         while true do
             local t = tick() * 0.5
@@ -61,13 +88,11 @@ local function createWatermark()
         end
     end)
 
-    -- Обводка
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(40, 40, 40)
     stroke.Thickness = 1
     stroke.Parent = holder
 
-    -- Текст (Бренд)
     local brand = Instance.new("TextLabel")
     brand.Size = UDim2.new(0, 80, 1, 0)
     brand.Position = UDim2.new(0, 10, 0, 1)
@@ -79,7 +104,6 @@ local function createWatermark()
     brand.TextXAlignment = Enum.TextXAlignment.Left
     brand.Parent = holder
     
-    -- Разделитель
     local sep = Instance.new("TextLabel")
     sep.Size = UDim2.new(0, 10, 1, 0)
     sep.Position = UDim2.new(0, 75, 0, 1)
@@ -89,28 +113,28 @@ local function createWatermark()
     sep.TextSize = 14
     sep.Parent = holder
 
-    -- Текст статуса
     local status = Instance.new("TextLabel")
     status.Size = UDim2.new(1, -95, 1, 0)
     status.Position = UDim2.new(0, 90, 0, 1)
     status.BackgroundTransparency = 1
-    status.Text = "SEX" -- Надпись при загрузке
-    status.TextColor3 = Color3.fromRGB(255, 105, 180) -- Розовый цвет для эффекта
+    status.Text = "SEX"
+    status.TextColor3 = Color3.fromRGB(255, 105, 180)
     status.TextSize = 13
     status.Font = Enum.Font.Code
     status.TextXAlignment = Enum.TextXAlignment.Left
     status.Parent = holder
     
-    -- Таймер смены надписи
     task.delay(2.5, function()
         status.Text = "searching threats..."
         status.TextColor3 = Color3.fromRGB(180, 180, 180)
     end)
     
-    return status, stroke, uigradient
+    return status, stroke
 end
 
-local statusLabel, mainStroke, barGradient = createWatermark()
+-- Инициализация
+createBigBanner()
+local statusLabel, mainStroke = createWatermark()
 
 -- Настройки
 local SETTINGS = {
@@ -140,10 +164,10 @@ local function setBlockState(active)
 end
 
 -- Проверка атаки
-local function isAttacking(char)
-    if char == Player.Character then return false end
+local function isEnemyAttacking(enemyChar)
+    if not enemyChar or enemyChar == Player.Character then return false end
     
-    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hum = enemyChar:FindFirstChildOfClass("Humanoid")
     local animator = hum and hum:FindFirstChildOfClass("Animator")
     
     if animator then
@@ -169,23 +193,26 @@ RunService.PostSimulation:Connect(function()
         return 
     end
     
-    local character = Player.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+    local myChar = Player.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
     
     local shouldBlock = false
     
-    for _, enemy in pairs(game:GetService("Players"):GetPlayers()) do
-        if enemy ~= Player and enemy.Character then
-            local enemyRoot = enemy.Character:FindFirstChild("HumanoidRootPart")
-            local enemyHum = enemy.Character:FindFirstChildOfClass("Humanoid")
-            
-            if enemyRoot and enemyHum and enemyHum.Health > 0 then
-                local dist = (root.Position - enemyRoot.Position).Magnitude
-                if dist <= SETTINGS.BlockDistance then
-                    if isAttacking(enemy.Character) then
-                        shouldBlock = true
-                        break
+    for _, otherPlayer in pairs(game:GetService("Players"):GetPlayers()) do
+        if otherPlayer ~= Player then
+            local enemyChar = otherPlayer.Character
+            if enemyChar then
+                local enemyRoot = enemyChar:FindFirstChild("HumanoidRootPart")
+                local enemyHum = enemyChar:FindFirstChildOfClass("Humanoid")
+                
+                if enemyRoot and enemyHum and enemyHum.Health > 0 then
+                    local dist = (myRoot.Position - enemyRoot.Position).Magnitude
+                    if dist <= SETTINGS.BlockDistance then
+                        if isEnemyAttacking(enemyChar) then
+                            shouldBlock = true
+                            break
+                        end
                     end
                 end
             end
@@ -200,7 +227,6 @@ RunService.PostSimulation:Connect(function()
         setBlockState(true)
     elseif not shouldBlock and isBlocking then
         isBlocking = false
-        -- Возвращаем статус только если прошло время начальной заставки
         if statusLabel.Text ~= "SEX" then
             statusLabel.Text = "status: active"
             statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -210,4 +236,4 @@ RunService.PostSimulation:Connect(function()
     end
 end)
 
-print("--- JJS.SENSE V4 (Animated) Loaded ---")
+print("--- JJS.SENSE V4 Loaded ---")
