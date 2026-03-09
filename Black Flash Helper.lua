@@ -1,36 +1,36 @@
 --[[
-    Jujutsu Shenanigans Auto Block Script (Optimized)
-    Совместимость: Xeno / Executor
-    Описание: Версия с ватермаркой (Watermark) и улучшенным детектом атак.
+    Jujutsu Shenanigans Auto Block Script (Universal V2)
+    Совместимость: Xeno / Electron / Solara / Any Executor
+    Описание: Версия с ватермаркой и альтернативными методами нажатия.
 ]]
 
 local Player = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
 
 -- Создание Watermark
 local function createWatermark()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "JJS_Watermark"
-    -- Пытаемся поместить в CoreGui для скрытия от скриншотов, иначе в PlayerGui
+    screenGui.ResetOnSpawn = false
     screenGui.Parent = (gethui and gethui()) or CoreGui or Player:WaitForChild("PlayerGui")
     
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 200, 0, 40)
-    mainFrame.Position = UDim2.new(0, 10, 0, 10)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    mainFrame.Size = UDim2.new(0, 220, 0, 45)
+    mainFrame.Position = UDim2.new(0, 15, 0, 15)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     mainFrame.BorderSizePixel = 0
     mainFrame.Parent = screenGui
     
-    -- Скругление углов
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = mainFrame
     
-    -- Обводка
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(138, 43, 226) -- Фиолетовый цвет (стиль JJS)
+    stroke.Color = Color3.fromRGB(138, 43, 226)
     stroke.Thickness = 2
     stroke.Parent = mainFrame
 
@@ -50,13 +50,28 @@ local statusLabel = createWatermark()
 
 -- Настройки
 local SETTINGS = {
-    BlockDistance = 18,
+    BlockDistance = 20,
     Enabled = true,
-    BlockKey = Enum.KeyCode.F
+    BlockKey = "F", -- Клавиша в строковом формате
+    KeyByte = 0x46 -- HEX код для F
 }
 
 -- Переменные состояния
 local isBlocking = false
+
+-- Функция симуляции нажатия (Альтернативный метод)
+local function setBlock(state)
+    if state then
+        -- Метод 1: Стандартный keypress
+        if keypress then keypress(SETTINGS.KeyByte) end
+        -- Метод 2: VirtualUser (на случай если keypress заблокирован)
+        VirtualUser:ButtonDown(Enum.UserInputType.Keyboard, SETTINGS.BlockKey, workspace)
+    else
+        -- Отпускаем
+        if keyrelease then keyrelease(SETTINGS.KeyByte) end
+        VirtualUser:ButtonUp(Enum.UserInputType.Keyboard, SETTINGS.BlockKey, workspace)
+    end
+end
 
 -- Функция проверки атаки
 local function isAttacking(char)
@@ -66,10 +81,11 @@ local function isAttacking(char)
     if animator then
         for _, track in pairs(animator:GetPlayingAnimationTracks()) do
             local animName = track.Animation.Name:lower()
-            -- Расширенный список ключевых слов для JJS
+            -- Расширенный список анимаций атак для JJS
             if animName:find("attack") or animName:find("punch") or animName:find("swing") or 
                animName:find("slash") or animName:find("execute") or animName:find("ability") or
-               animName:find("m1") or animName:find("m2") then
+               animName:find("m1") or animName:find("m2") or animName:find("hit") or 
+               animName:find("dash_attack") then
                 return true
             end
         end
@@ -78,7 +94,7 @@ local function isAttacking(char)
 end
 
 -- Основной цикл обработки
-RunService.RenderStepped:Connect(function()
+RunService.Heartbeat:Connect(function()
     if not SETTINGS.Enabled then 
         statusLabel.Text = "JJS | Auto Block: OFF"
         statusLabel.TextColor3 = Color3.fromRGB(200, 0, 0)
@@ -91,11 +107,13 @@ RunService.RenderStepped:Connect(function()
     
     local shouldBlock = false
     
-    -- Поиск ближайшего атакующего противника
+    -- Поиск противников
     for _, enemyPlayer in pairs(game:GetService("Players"):GetPlayers()) do
         if enemyPlayer ~= Player and enemyPlayer.Character then
             local enemyRoot = enemyPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if enemyRoot then
+            local enemyHum = enemyPlayer.Character:FindFirstChildOfClass("Humanoid")
+            
+            if enemyRoot and enemyHum and enemyHum.Health > 0 then
                 local dist = (root.Position - enemyRoot.Position).Magnitude
                 if dist <= SETTINGS.BlockDistance then
                     if isAttacking(enemyPlayer.Character) then
@@ -107,21 +125,22 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- Логика нажатия
-    if shouldBlock and not isBlocking then
-        isBlocking = true
-        statusLabel.Text = "JJS | Auto Block: BLOCKING"
-        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        
-        if keypress then keypress(0x46) end -- Клавиша F
-        
-    elseif not shouldBlock and isBlocking then
-        isBlocking = false
-        statusLabel.Text = "JJS | Auto Block: ACTIVE"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        
-        if keyrelease then keyrelease(0x46) end -- Отпустить F
+    -- Управление блоком
+    if shouldBlock then
+        if not isBlocking then
+            isBlocking = true
+            statusLabel.Text = "JJS | Auto Block: BLOCKING"
+            statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            setBlock(true)
+        end
+    else
+        if isBlocking then
+            isBlocking = false
+            statusLabel.Text = "JJS | Auto Block: ACTIVE"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            setBlock(false)
+        end
     end
 end)
 
-print("--- Auto Block JJS Loaded with Watermark ---")
+print("--- Auto Block JJS V2 Loaded ---")
