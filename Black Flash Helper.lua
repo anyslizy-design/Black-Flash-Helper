@@ -1,94 +1,75 @@
 --[[
-    AutoBlock для Jujutsu Shenanigans
-    Инжектор: Xeno
-    Файл анимаций: C:\Users\ТВОЁИМЯ\Desktop\jjs_attacks.txt
-    (или просто "jjs_attacks.txt" на рабочем столе)
+    Jujutsu Shenanigans Auto Block Script (Optimized)
+    Совместимость: Xeno / Executor
+    Описание: Версия с ватермаркой (Watermark) и улучшенным детектом атак.
 ]]
 
-local player = game.Players.LocalPlayer
+local Player = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
 
--- ===== НАСТРОЙКИ (можно менять) =====
-local BLOCK_DISTANCE = 25      -- дальность реакции
-local COOLDOWN = 0.3           -- задержка между блоками
--- ====================================
+-- Создание Watermark
+local function createWatermark()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "JJS_Watermark"
+    -- Пытаемся поместить в CoreGui для скрытия от скриншотов, иначе в PlayerGui
+    screenGui.Parent = (gethui and gethui()) or CoreGui or Player:WaitForChild("PlayerGui")
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 200, 0, 40)
+    mainFrame.Position = UDim2.new(0, 10, 0, 10)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = screenGui
+    
+    -- Скругление углов
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = mainFrame
+    
+    -- Обводка
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(138, 43, 226) -- Фиолетовый цвет (стиль JJS)
+    stroke.Thickness = 2
+    stroke.Parent = mainFrame
 
--- Читаем анимации из файла на рабочем столе
-local attackNames = {}
-local filePath = os.getenv("USERPROFILE") .. "\\Desktop\\jjs_attacks.txt"
-local file = io.open(filePath, "r")
-if file then
-    for line in file:lines() do
-        local name = line:match("^%s*(.-)%s*$") -- обрезка пробелов
-        if name and name ~= "" then
-            table.insert(attackNames, name)
-        end
-    end
-    file:close()
-    print("✅ AutoBlock: загружено атак из файла: " .. #attackNames)
-else
-    warn("❌ Файл jjs_attacks.txt не найден на рабочем столе. Скрипт остановлен.")
-    return
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "JJS | Auto Block: ACTIVE"
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = 14
+    label.Font = Enum.Font.GothamBold
+    label.Parent = mainFrame
+    
+    return label
 end
 
--- Определяем способ активации блока (автоматически)
-local blockFunction = nil
+local statusLabel = createWatermark()
 
--- Вариант 1: RemoteEvent (часто используется в игре)
-local possibleRemotes = {
-    ReplicatedStorage:FindFirstChild("Block"),
-    ReplicatedStorage:FindFirstChild("Guard"),
-    ReplicatedStorage:FindFirstChild("BlockEvent"),
-    ReplicatedStorage:FindFirstChild("ActivateBlock"),
-    player:FindFirstChild("Block"),
-    player:FindFirstChild("Guard"),
+-- Настройки
+local SETTINGS = {
+    BlockDistance = 18,
+    Enabled = true,
+    BlockKey = Enum.KeyCode.F
 }
 
-for _, remote in ipairs(possibleRemotes) do
-    if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
-        blockFunction = function()
-            remote:FireServer() -- для RemoteEvent
-            -- если RemoteFunction, то :InvokeServer() без ожидания ответа
-        end
-        print("🔌 AutoBlock: используется RemoteEvent - " .. remote.Name)
-        break
-    end
-end
+-- Переменные состояния
+local isBlocking = false
 
--- Вариант 2: Humanoid State (если RemoteEvent не нашёлся)
-if not blockFunction then
-    -- Включаем защиту через состояние Humanoid (если игра использует стандартный механизм)
-    blockFunction = function()
-        local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false) -- неважно что, главное вызвать защиту
-            -- но это костыль, лучше через RemoteEvent
-        end
-    end
-    print("⚠️ AutoBlock: RemoteEvent не найден, используется fallback (может не работать)")
-end
-
--- Проверка дистанции
-local function isEnemyClose(char)
-    if not player.Character then return false end
-    local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
-    local enemyRoot = char:FindFirstChild("HumanoidRootPart")
-    if myRoot and enemyRoot then
-        return (myRoot.Position - enemyRoot.Position).Magnitude < BLOCK_DISTANCE
-    end
-    return false
-end
-
--- Поиск анимаций атаки у противника
-local function hasAttackAnimation(char)
-    local humanoid = char:FindFirstChild("Humanoid")
-    if not humanoid then return false end
-    local tracks = humanoid:GetPlayingAnimationTracks()
-    for _, track in ipairs(tracks) do
-        local animName = track.Animation and track.Animation.Name or track.Name
-        for _, attackName in ipairs(attackNames) do
-            if animName == attackName then
+-- Функция проверки атаки
+local function isAttacking(char)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local animator = hum and hum:FindFirstChildOfClass("Animator")
+    
+    if animator then
+        for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+            local animName = track.Animation.Name:lower()
+            -- Расширенный список ключевых слов для JJS
+            if animName:find("attack") or animName:find("punch") or animName:find("swing") or 
+               animName:find("slash") or animName:find("execute") or animName:find("ability") or
+               animName:find("m1") or animName:find("m2") then
                 return true
             end
         end
@@ -96,30 +77,51 @@ local function hasAttackAnimation(char)
     return false
 end
 
--- Основной цикл
-local lastBlock = 0
-local blocking = false
-
-RunService.Heartbeat:Connect(function()
-    if blocking or tick() - lastBlock < COOLDOWN then return end
-
-    local myChar = player.Character
-    if not myChar or not myChar:FindFirstChild("Humanoid") or myChar.Humanoid.Health <= 0 then return end
-
-    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
-        if otherPlayer ~= player then
-            local otherChar = otherPlayer.Character
-            if otherChar and otherChar:FindFirstChild("Humanoid") and otherChar.Humanoid.Health > 0 then
-                if isEnemyClose(otherChar) and hasAttackAnimation(otherChar) then
-                    blocking = true
-                    blockFunction()  -- вызываем блок
-                    lastBlock = tick()
-                    blocking = false
-                    break
+-- Основной цикл обработки
+RunService.RenderStepped:Connect(function()
+    if not SETTINGS.Enabled then 
+        statusLabel.Text = "JJS | Auto Block: OFF"
+        statusLabel.TextColor3 = Color3.fromRGB(200, 0, 0)
+        return 
+    end
+    
+    local character = Player.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    local shouldBlock = false
+    
+    -- Поиск ближайшего атакующего противника
+    for _, enemyPlayer in pairs(game:GetService("Players"):GetPlayers()) do
+        if enemyPlayer ~= Player and enemyPlayer.Character then
+            local enemyRoot = enemyPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if enemyRoot then
+                local dist = (root.Position - enemyRoot.Position).Magnitude
+                if dist <= SETTINGS.BlockDistance then
+                    if isAttacking(enemyPlayer.Character) then
+                        shouldBlock = true
+                        break
+                    end
                 end
             end
         end
     end
+    
+    -- Логика нажатия
+    if shouldBlock and not isBlocking then
+        isBlocking = true
+        statusLabel.Text = "JJS | Auto Block: BLOCKING"
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        
+        if keypress then keypress(0x46) end -- Клавиша F
+        
+    elseif not shouldBlock and isBlocking then
+        isBlocking = false
+        statusLabel.Text = "JJS | Auto Block: ACTIVE"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        
+        if keyrelease then keyrelease(0x46) end -- Отпустить F
+    end
 end)
 
-print("🚀 AutoBlock запущен, жду анимации из списка...")
+print("--- Auto Block JJS Loaded with Watermark ---")
