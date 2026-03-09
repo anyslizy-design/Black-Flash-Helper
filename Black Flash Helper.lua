@@ -1,7 +1,7 @@
 --[[
     JJS.SENSE Premium Interface
     Совместимость: Xeno / Любой современный инжектор
-    Описание: Обновленный визуальный стиль "Modern Dark"
+    Описание: Обновленный визуальный стиль "Modern Dark". Добавлена пасхалка при загрузке.
 ]]
 
 local Player = game:GetService("Players").LocalPlayer
@@ -94,12 +94,18 @@ local function createWatermark()
     status.Size = UDim2.new(1, -95, 1, 0)
     status.Position = UDim2.new(0, 90, 0, 1)
     status.BackgroundTransparency = 1
-    status.Text = "searching threats..."
-    status.TextColor3 = Color3.fromRGB(180, 180, 180)
+    status.Text = "SEX" -- Надпись при загрузке
+    status.TextColor3 = Color3.fromRGB(255, 105, 180) -- Розовый цвет для эффекта
     status.TextSize = 13
     status.Font = Enum.Font.Code
     status.TextXAlignment = Enum.TextXAlignment.Left
     status.Parent = holder
+    
+    -- Таймер смены надписи
+    task.delay(2.5, function()
+        status.Text = "searching threats..."
+        status.TextColor3 = Color3.fromRGB(180, 180, 180)
+    end)
     
     return status, stroke, uigradient
 end
@@ -135,6 +141,8 @@ end
 
 -- Проверка атаки
 local function isAttacking(char)
+    if char == Player.Character then return false end
+    
     local hum = char:FindFirstChildOfClass("Humanoid")
     local animator = hum and hum:FindFirstChildOfClass("Animator")
     
@@ -192,11 +200,14 @@ RunService.PostSimulation:Connect(function()
         setBlockState(true)
     elseif not shouldBlock and isBlocking then
         isBlocking = false
-        statusLabel.Text = "status: active"
-        statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        -- Возвращаем статус только если прошло время начальной заставки
+        if statusLabel.Text ~= "SEX" then
+            statusLabel.Text = "status: active"
+            statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        end
         TweenService:Create(mainStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(40, 40, 40)}):Play()
         setBlockState(false)
     end
 end)
 
-print("--- JJS.SENSE V4 (Animated) Loaded 
+print("--- JJS.SENSE V4 (Animated) Loaded ---")
