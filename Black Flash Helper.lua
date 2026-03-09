@@ -1,7 +1,7 @@
 --[[
-    JJS.SENSE Premium Interface
+    GONDON.SENSE Premium Interface
     Совместимость: Xeno / Любой современный инжектор
-    Описание: Обновленный визуальный стиль с приветственным баннером.
+    Описание: Обновленный визуальный стиль с приветственным баннером и названием GONDON.SENSE.
 ]]
 
 local Player = game:GetService("Players").LocalPlayer
@@ -46,7 +46,7 @@ end
 -- Создание премиального Watermark
 local function createWatermark()
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "JJS_SENSE_V4"
+    screenGui.Name = "GONDON_SENSE_V4"
     screenGui.ResetOnSpawn = false
     screenGui.Parent = (gethui and gethui()) or CoreGui or Player:WaitForChild("PlayerGui")
     
@@ -94,10 +94,10 @@ local function createWatermark()
     stroke.Parent = holder
 
     local brand = Instance.new("TextLabel")
-    brand.Size = UDim2.new(0, 80, 1, 0)
+    brand.Size = UDim2.new(0, 100, 1, 0)
     brand.Position = UDim2.new(0, 10, 0, 1)
     brand.BackgroundTransparency = 1
-    brand.Text = "jjs.sense"
+    brand.Text = "gondon.sense"
     brand.TextColor3 = Color3.fromRGB(255, 255, 255)
     brand.TextSize = 14
     brand.Font = Enum.Font.Ubuntu
@@ -106,7 +106,7 @@ local function createWatermark()
     
     local sep = Instance.new("TextLabel")
     sep.Size = UDim2.new(0, 10, 1, 0)
-    sep.Position = UDim2.new(0, 75, 0, 1)
+    sep.Position = UDim2.new(0, 95, 0, 1)
     sep.BackgroundTransparency = 1
     sep.Text = "|"
     sep.TextColor3 = Color3.fromRGB(60, 60, 60)
@@ -114,8 +114,8 @@ local function createWatermark()
     sep.Parent = holder
 
     local status = Instance.new("TextLabel")
-    status.Size = UDim2.new(1, -95, 1, 0)
-    status.Position = UDim2.new(0, 90, 0, 1)
+    status.Size = UDim2.new(1, -115, 1, 0)
+    status.Position = UDim2.new(0, 110, 0, 1)
     status.BackgroundTransparency = 1
     status.Text = "SEX"
     status.TextColor3 = Color3.fromRGB(255, 105, 180)
@@ -236,4 +236,4 @@ RunService.PostSimulation:Connect(function()
     end
 end)
 
-print("--- JJS.SENSE V4 Loaded ---")
+print("--- GONDON.SENSE V4 Loaded ---")
